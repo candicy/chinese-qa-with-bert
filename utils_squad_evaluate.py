@@ -85,26 +85,26 @@ def make_qid_to_has_ans(dataset):
 def normalize_answer(s):
     """Lower text and remove punctuation, articles and extra whitespace."""
 
-    def remove_articles(text):
-        regex = re.compile(r'\b(a|an|the)\b', re.UNICODE)
-        return re.sub(regex, ' ', text)
+    # def remove_articles(text):
+    #     regex = re.compile(r'\b(a|an|the)\b', re.UNICODE)
+    #     return re.sub(regex, ' ', text)
 
-    def white_space_fix(text):
-        return ' '.join(text.split())
+    # def white_space_fix(text):
+    #     return ' '.join(text.split())
 
-    def remove_punc(text):
-        exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
+    # def remove_punc(text):
+    #     exclude = set(string.punctuation)
+    #     return ''.join(ch for ch in text if ch not in exclude)
 
-    def lower(text):
-        return text.lower()
+    # def lower(text):
+    #     return text.lower()
 
-    return white_space_fix(remove_articles(remove_punc(lower(s))))
+    return list(''.join(s.split()))
 
 
 def get_tokens(s):
     if not s: return []
-    return normalize_answer(s).split()
+    return normalize_answer(s)
 
 
 def compute_exact(a_gold, a_pred):
@@ -114,30 +114,102 @@ def compute_exact(a_gold, a_pred):
 def compute_f1(a_gold, a_pred):
     gold_toks = get_tokens(a_gold)
     pred_toks = get_tokens(a_pred)
+
     common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
     num_same = sum(common.values())
+    # print("num_same:", num_same)
     if len(gold_toks) == 0 or len(pred_toks) == 0:
         # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
         return int(gold_toks == pred_toks)
     if num_same == 0:
         return 0
+    
     precision = 1.0 * num_same / len(pred_toks)
     recall = 1.0 * num_same / len(gold_toks)
     f1 = (2 * precision * recall) / (precision + recall)
+    # print()
+    # if recall < 1.0:
+    # print("num_same:", num_same)
+    # print("gold_toks:")
+    # print(gold_toks)
+    # # print()
+    # print("pred_toks")
+    # print(pred_toks)
+    # print(precision, recall, f1)
     return f1
 
+def compute_precision(a_gold, a_pred):
+    gold_toks = get_tokens(a_gold)
+    pred_toks = get_tokens(a_pred)
+
+    common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
+    num_same = sum(common.values())
+    # print("num_same:", num_same)
+    if len(gold_toks) == 0 or len(pred_toks) == 0:
+        # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
+        return int(gold_toks == pred_toks)
+    if num_same == 0:
+        return 0
+    
+    precision = 1.0 * num_same / len(pred_toks)
+    # recall = 1.0 * num_same / len(gold_toks)
+    # f1 = (2 * precision * recall) / (precision + recall)
+    # print()
+    # if recall < 1.0:
+    # print("num_same:", num_same)
+    # print("gold_toks:")
+    # print(gold_toks)
+    # # print()
+    # print("pred_toks")
+    # print(pred_toks)
+    # print(precision, recall, f1)
+    return precision
+
+def compute_recall(a_gold, a_pred):
+    gold_toks = get_tokens(a_gold)
+    pred_toks = get_tokens(a_pred)
+
+    common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
+    num_same = sum(common.values())
+    # print("num_same:", num_same)
+    if len(gold_toks) == 0 or len(pred_toks) == 0:
+        # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
+        return int(gold_toks == pred_toks)
+    if num_same == 0:
+        return 0
+    
+    # precision = 1.0 * num_same / len(pred_toks)
+    recall = 1.0 * num_same / len(gold_toks)
+    # f1 = (2 * precision * recall) / (precision + recall)
+    # print()
+    # if recall < 1.0:
+    # print("num_same:", num_same)
+    # print("gold_toks:")
+    # print(gold_toks)
+    # # print()
+    # print("pred_toks")
+    # print(pred_toks)
+    # print(precision, recall, f1)
+    return recall
 
 def get_raw_scores(dataset, preds):
     exact_scores = {}
     f1_scores = {}
+    precisions = {}
+    recalls = {}
     for article in dataset:
         for p in article['paragraphs']:
+            # print(p['context'])
+            # print()
             for qa in p['qas']:
                 qid = qa['id']
+                q = qa['question']
+                # print(q)
                 gold_answers = [
                     a['text'] for a in qa['answers']
                     if normalize_answer(a['text'])
                 ]
+                
                 if not gold_answers:
                     # For unanswerable questions, only correct answer is empty string
                     gold_answers = ['']
@@ -145,12 +217,18 @@ def get_raw_scores(dataset, preds):
                     print('Missing prediction for %s' % qid)
                     continue
                 a_pred = preds[qid]
+
                 # Take max over all gold answers
                 exact_scores[qid] = max(
                     compute_exact(a, a_pred) for a in gold_answers)
                 f1_scores[qid] = max(
                     compute_f1(a, a_pred) for a in gold_answers)
-    return exact_scores, f1_scores
+                precisions[qid] = max(
+                    compute_precision(a, a_pred) for a in gold_answers)
+                recalls[qid] = max(
+                    compute_recall(a, a_pred) for a in gold_answers)
+                
+    return exact_scores, f1_scores, precisions, recalls
 
 
 def apply_no_ans_threshold(scores, na_probs, qid_to_has_ans, na_prob_thresh):
@@ -369,10 +447,16 @@ def main(OPTS):
     qid_to_has_ans = make_qid_to_has_ans(dataset)  # maps qid to True/False
     has_ans_qids = [k for k, v in qid_to_has_ans.items() if v]
     no_ans_qids = [k for k, v in qid_to_has_ans.items() if not v]
-    exact_raw, f1_raw = get_raw_scores(dataset, preds)
+    exact_raw, f1_raw, precision_raw, recall_raw = get_raw_scores(dataset, preds)
+    data_count = 10092
+    print(sum(exact_raw.values())/data_count, sum(f1_raw.values())/data_count, sum(precision_raw.values())/data_count, sum(recall_raw.values())/data_count)
     exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                           OPTS.na_prob_thresh)
     f1_thresh = apply_no_ans_threshold(f1_raw, na_probs, qid_to_has_ans,
+                                       OPTS.na_prob_thresh)
+    precision_thresh = apply_no_ans_threshold(precision_raw, na_probs, qid_to_has_ans,
+                                       OPTS.na_prob_thresh)
+    recall_thresh = apply_no_ans_threshold(recall_raw, na_probs, qid_to_has_ans,
                                        OPTS.na_prob_thresh)
     out_eval = make_eval_dict(exact_thresh, f1_thresh)
     if has_ans_qids:

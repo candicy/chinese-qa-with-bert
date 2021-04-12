@@ -241,8 +241,8 @@ device = torch.device(
     "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
 args.device = device
 tokenizer = BertTokenizer.from_pretrained(
-    'bert-base-chinese', do_lower_case=False)
-config = BertConfig.from_pretrained('bert-base-chinese')
+    args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=False)
+config = BertConfig.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path)
 model = BertForQuestionAnswering(config)
 model_state_dict = args.state_dict
 model.load_state_dict(torch.load(model_state_dict))
@@ -287,9 +287,10 @@ def run():
         evaluate(args, model, tokenizer)
 
         predict_file = os.path.join(args.output_dir, "predictions_.json")
-        with open(predict_file, "r") as reader:
+        with open(predict_file, "r", encoding='utf-8') as reader:
             orig_data = json.load(reader)
-            print(orig_data[""])
+            # print(orig_data[""])
+            print(orig_data)
         # clean input file
         handle_file(input_file, "", ["", "", ""])
 
