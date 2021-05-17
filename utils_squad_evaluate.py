@@ -450,10 +450,16 @@ def main(OPTS):
     exact_raw, f1_raw, precision_raw, recall_raw = get_raw_scores(dataset, preds)
     
     
-    data_count = 4217    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+    # data_count = 4217    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+    preds_data_count = 0
+    for one_in_data in dataset:
+        paragraphs = one_in_data['paragraphs']
+        for one_paragraph in paragraphs:
+            qas = one_paragraph['qas']
+            one_paragraph_qa_count = len(qas)
+            preds_data_count += one_paragraph_qa_count
     
-    
-    print(sum(exact_raw.values())/data_count, sum(f1_raw.values())/data_count, sum(precision_raw.values())/data_count, sum(recall_raw.values())/data_count)
+    print(sum(exact_raw.values())/preds_data_count, sum(f1_raw.values())/preds_data_count, sum(precision_raw.values())/preds_data_count, sum(recall_raw.values())/preds_data_count)
     exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                           OPTS.na_prob_thresh)
     f1_thresh = apply_no_ans_threshold(f1_raw, na_probs, qid_to_has_ans,
