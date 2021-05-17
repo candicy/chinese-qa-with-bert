@@ -127,15 +127,15 @@ def compute_f1(a_gold, a_pred):
     precision = 1.0 * num_same / len(pred_toks)
     recall = 1.0 * num_same / len(gold_toks)
     f1 = (2 * precision * recall) / (precision + recall)
-    # print()
+    print()
     # if recall < 1.0:
-    # print("num_same:", num_same)
-    # print("gold_toks:")
-    # print(gold_toks)
+    print("num_same:", num_same)
+    print("gold_toks:")
+    print(gold_toks)
     # # print()
-    # print("pred_toks")
-    # print(pred_toks)
-    # print(precision, recall, f1)
+    print("pred_toks")
+    print(pred_toks)
+    print(precision, recall, f1)
     return f1
 
 def compute_precision(a_gold, a_pred):
@@ -448,7 +448,11 @@ def main(OPTS):
     has_ans_qids = [k for k, v in qid_to_has_ans.items() if v]
     no_ans_qids = [k for k, v in qid_to_has_ans.items() if not v]
     exact_raw, f1_raw, precision_raw, recall_raw = get_raw_scores(dataset, preds)
-    data_count = 10092
+    
+    
+    data_count = 4217    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+    
+    
     print(sum(exact_raw.values())/data_count, sum(f1_raw.values())/data_count, sum(precision_raw.values())/data_count, sum(recall_raw.values())/data_count)
     exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                           OPTS.na_prob_thresh)
