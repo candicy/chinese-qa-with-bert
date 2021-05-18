@@ -262,7 +262,8 @@ def evaluate(args, model, tokenizer, prefix=""):
     # Evaluate with the official SQuAD script
     evaluate_options = EVAL_OPTS(data_file=args.predict_file,
                                  pred_file=output_prediction_file,
-                                 na_prob_file=output_null_log_odds_file)
+                                 na_prob_file=output_null_log_odds_file,
+                                 out_false_cases_folder=args.output_dir)
     results = evaluate_on_squad(evaluate_options)
     return results
 

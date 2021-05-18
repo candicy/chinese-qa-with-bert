@@ -23,6 +23,7 @@ class EVAL_OPTS():
                  na_prob_file="na_prob.json",
                  na_prob_thresh=1.0,
                  out_image_dir=None,
+                 out_false_cases_folder=None,
                  verbose=False):
         self.data_file = data_file
         self.pred_file = pred_file
@@ -30,6 +31,7 @@ class EVAL_OPTS():
         self.na_prob_file = na_prob_file
         self.na_prob_thresh = na_prob_thresh
         self.out_image_dir = out_image_dir
+        self.out_false_cases_folder = out_false_cases_folder
         self.verbose = verbose
 
 
@@ -127,15 +129,15 @@ def compute_f1(a_gold, a_pred):
     precision = 1.0 * num_same / len(pred_toks)
     recall = 1.0 * num_same / len(gold_toks)
     f1 = (2 * precision * recall) / (precision + recall)
-    print()
-    # if recall < 1.0:
-    print("num_same:", num_same)
-    print("gold_toks:")
-    print(gold_toks)
-    # # print()
-    print("pred_toks")
-    print(pred_toks)
-    print(precision, recall, f1)
+    # print()
+    # # if recall < 1.0:
+    # print("num_same:", num_same)
+    # print("gold_toks:")
+    # print(gold_toks)
+    # # # print()
+    # print("pred_toks")
+    # print(pred_toks)
+    # print(precision, recall, f1)
     return f1
 
 def compute_precision(a_gold, a_pred):
@@ -192,15 +194,22 @@ def compute_recall(a_gold, a_pred):
     # print(precision, recall, f1)
     return recall
 
-def get_raw_scores(dataset, preds):
+def get_raw_scores(dataset, preds, out_false_cases_folder=None):
     exact_scores = {}
     f1_scores = {}
     precisions = {}
     recalls = {}
+
+    false_cases_for_f1 = ''
+    false_cases_for_exact = ''
+    false_cases_for_precision = ''
+    false_cases_for_recall = ''
+
     for article in dataset:
         for p in article['paragraphs']:
             # print(p['context'])
             # print()
+            context = p['context']
             for qa in p['qas']:
                 qid = qa['id']
                 q = qa['question']
@@ -227,7 +236,69 @@ def get_raw_scores(dataset, preds):
                     compute_precision(a, a_pred) for a in gold_answers)
                 recalls[qid] = max(
                     compute_recall(a, a_pred) for a in gold_answers)
-                
+
+                if out_false_cases_folder:
+                    if exact_scores[qid] != 1:
+                        false_cases_for_exact += context
+                        false_cases_for_exact += '\n\n'
+                        false_cases_for_exact += json.dumps(qa, ensure_ascii=False)
+                        false_cases_for_exact += '\n\nPredict:\n'
+                        false_cases_for_exact += ''.join(a_pred.split())
+                        false_cases_for_exact += '\n\nGold Answer:\n'
+                        false_cases_for_exact += gold_answers[0]
+                        false_cases_for_exact += '\n\n'
+                        false_cases_for_exact += str(exact_scores[qid])
+                        false_cases_for_exact += '\n\n\n\n'
+                    if f1_scores[qid] != 1:
+                        false_cases_for_f1 += context
+                        false_cases_for_f1 += '\n\n'
+                        false_cases_for_f1 += json.dumps(qa, ensure_ascii=False)
+                        false_cases_for_f1 += '\n\nPredict:\n'
+                        false_cases_for_f1 += ''.join(a_pred.split())
+                        false_cases_for_f1 += '\n\nGold Answer:\n'
+                        false_cases_for_f1 += gold_answers[0]
+                        false_cases_for_f1 += '\n\n'
+                        false_cases_for_f1 += str(f1_scores[qid])
+                        false_cases_for_f1 += '\n\n\n\n'
+                    if precisions[qid] != 1:
+                        false_cases_for_precision += context
+                        false_cases_for_precision += '\n\n'
+                        false_cases_for_precision += json.dumps(qa, ensure_ascii=False)
+                        false_cases_for_precision += '\n\nPredict:\n'
+                        false_cases_for_precision += ''.join(a_pred.split())
+                        false_cases_for_precision += '\n\nGold Answer:\n'
+                        false_cases_for_precision += gold_answers[0]
+                        false_cases_for_precision += '\n\n'
+                        false_cases_for_precision += str(precisions[qid])
+                        false_cases_for_precision += '\n\n\n\n'
+                    if recalls[qid] != 1:
+                        false_cases_for_recall += context
+                        false_cases_for_recall += '\n\n'
+                        false_cases_for_recall += json.dumps(qa, ensure_ascii=False)
+                        false_cases_for_recall += '\n\nPredict:\n'
+                        false_cases_for_recall += ''.join(a_pred.split())
+                        false_cases_for_recall += '\n\nGold Answer:\n'
+                        false_cases_for_recall += gold_answers[0]
+                        false_cases_for_recall += '\n\n'
+                        false_cases_for_recall += str(recalls[qid])
+                        false_cases_for_recall += '\n\n\n\n'
+
+    if out_false_cases_folder:
+        out_false_cases_for_f1 = out_false_cases_folder + "/false_cases_for_f1.txt"
+        out_false_cases_for_exact = out_false_cases_folder + "/false_cases_for_exact.txt"
+        out_false_cases_for_precision = out_false_cases_folder + "/false_cases_for_precision.txt"
+        out_false_cases_for_recall = out_false_cases_folder + "/false_cases_for_recall.txt"
+        with open(out_false_cases_for_f1, 'w') as f:
+            f.write(false_cases_for_f1)
+        with open(out_false_cases_for_exact, 'w') as f:
+            f.write(false_cases_for_exact)
+        with open(out_false_cases_for_precision, 'w') as f:
+            f.write(false_cases_for_precision)
+        with open(out_false_cases_for_recall, 'w') as f:
+            f.write(false_cases_for_recall)
+    # else:
+    #     print(json.dumps(out_eval, indent=2))
+    
     return exact_scores, f1_scores, precisions, recalls
 
 
@@ -447,10 +518,8 @@ def main(OPTS):
     qid_to_has_ans = make_qid_to_has_ans(dataset)  # maps qid to True/False
     has_ans_qids = [k for k, v in qid_to_has_ans.items() if v]
     no_ans_qids = [k for k, v in qid_to_has_ans.items() if not v]
-    exact_raw, f1_raw, precision_raw, recall_raw = get_raw_scores(dataset, preds)
+    exact_raw, f1_raw, precision_raw, recall_raw = get_raw_scores(dataset, preds, OPTS.out_false_cases_folder)
     
-    
-    # data_count = 4217    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
     preds_data_count = 0
     for one_in_data in dataset:
         paragraphs = one_in_data['paragraphs']
@@ -459,7 +528,11 @@ def main(OPTS):
             one_paragraph_qa_count = len(qas)
             preds_data_count += one_paragraph_qa_count
     
-    print(sum(exact_raw.values())/preds_data_count, sum(f1_raw.values())/preds_data_count, sum(precision_raw.values())/preds_data_count, sum(recall_raw.values())/preds_data_count)
+    print("Exact match:", sum(exact_raw.values())/preds_data_count)
+    print("F1:", sum(f1_raw.values())/preds_data_count)
+    print("Precision:", sum(precision_raw.values())/preds_data_count)
+    print("Recall:", sum(recall_raw.values())/preds_data_count)
+    
     exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                           OPTS.na_prob_thresh)
     f1_thresh = apply_no_ans_threshold(f1_raw, na_probs, qid_to_has_ans,
@@ -490,6 +563,7 @@ def main(OPTS):
             json.dump(out_eval, f)
     else:
         print(json.dumps(out_eval, indent=2))
+
     return out_eval
 
 
