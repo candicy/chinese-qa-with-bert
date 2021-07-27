@@ -8,9 +8,9 @@
                     "context": "fd",
                     "qas": [
                         {
-                            "question": "df",
+                            "question": "\"ENTITY1\" ? \"ENTITY2\"",
                             "id": "",
-                            "answers": []
+                            "answers": [{"text": "", "answer_start": 0}]
                         },
                         {
                             "question": "df",
